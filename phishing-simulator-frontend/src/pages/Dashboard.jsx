@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Send, Users, Activity, CheckCircle, AlertOctagon } from 'lucide-react';
+import { Send, Users, Activity, CheckCircle, AlertOctagon, Trash2 } from 'lucide-react';
 
 const Dashboard = () => {
   const [campaigns, setCampaigns] = useState([]);
@@ -56,6 +56,21 @@ const Dashboard = () => {
       console.error("Failed to create campaign:", error);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (confirm("Are you sure you want to delete all campaign history? This cannot be undone.")) {
+      try {
+        const res = await fetch('http://localhost:3000/api/campaigns', {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          setCampaigns([]);
+        }
+      } catch (error) {
+        console.error("Failed to clear history:", error);
+      }
     }
   };
 
@@ -165,7 +180,19 @@ const Dashboard = () => {
 
         {/* Recent Campaigns Table */}
         <div className="glass-card" style={{ overflowX: 'auto' }}>
-          <h3 style={{ marginBottom: '1.5rem' }}>Recent History</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 style={{ margin: 0 }}>Recent History</h3>
+            
+            {campaigns.length > 0 && (
+              <button 
+                onClick={handleClearHistory}
+                className="btn" 
+                style={{ backgroundColor: 'transparent', color: 'var(--error)', border: '1px solid var(--error)', padding: '0.4rem 0.8rem', fontSize: '0.875rem' }}
+              >
+                <Trash2 size={16} /> Clear
+              </button>
+            )}
+          </div>
           
           {loading ? (
              <p style={{ color: 'var(--text-muted)' }}>Loading campaigns...</p>
