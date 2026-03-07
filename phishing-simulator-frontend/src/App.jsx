@@ -2,15 +2,17 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { LayoutDashboard, GraduationCap, ShieldAlert } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import LearningPage from './pages/LearningPage';
+import PhishingPortal from './pages/PhishingPortal';
 import './index.css';
 
 // Reusable Layout Component
 const AppLayout = ({ children }) => {
   const location = useLocation();
   const isLearningRoute = location.pathname === '/learning';
+  const isPortalRoute = location.pathname.startsWith('/portal');
 
-  // Make the learning page immersive (no sidebar)
-  if (isLearningRoute) {
+  // Make the learning page and portal immersive (no sidebar)
+  if (isLearningRoute || isPortalRoute) {
       return <div className="app-container">{children}</div>;
   }
 
@@ -58,6 +60,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/learning" element={<LearningPage />} />
+          <Route path="/portal/:campaignId/:email" element={<PhishingPortal />} />
         </Routes>
       </AppLayout>
     </Router>

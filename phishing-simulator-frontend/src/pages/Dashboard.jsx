@@ -125,15 +125,18 @@ const Dashboard = () => {
             </div>
             
             <div className="form-group">
-              <label className="form-label">Target Email</label>
+              <label className="form-label">Target Email(s)</label>
               <input 
-                type="email" 
+                type="text" 
                 className="form-input" 
-                placeholder="employee@company.com"
+                placeholder="employee1@company.com, employee2@company.com"
                 value={targetEmail}
                 onChange={(e) => setTargetEmail(e.target.value)}
                 required
               />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                Separate multiple emails with commas.
+              </small>
             </div>
 
             <div className="form-group">

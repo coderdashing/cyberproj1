@@ -74,90 +74,104 @@ app.get('/api/campaigns', (req, res) => {
     });
 });
 
-// Create and send a new campaign
+// Create and send new campaign(s) (Supports multiple emails)
 app.post('/api/campaigns', (req, res) => {
     const { name, template, target_email } = req.body;
     if (!name || !template || !target_email) {
         return res.status(400).json({ error: "Missing required fields." });
     }
 
-    db.run(
-        'INSERT INTO campaigns (name, template, target_email) VALUES (?, ?, ?)',
-        [name, template, target_email],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            
-            const campaignId = this.lastID;
+    // Process multiple comma-separated emails
+    const emails = target_email.split(',').map(e => e.trim()).filter(e => e !== '');
+    
+    if (emails.length === 0) {
+        return res.status(400).json({ error: "No valid emails provided." });
+    }
 
-            // Pre-bake the malicious link pointing back to our server
-            const trackingLink = `http://localhost:${PORT}/api/click/${campaignId}/${encodeURIComponent(target_email)}`;
+    const insertedCampaigns = [];
+    let processedCount = 0;
 
-            // Send Email Simulation
-            let subject = 'Important Account Update';
-            let textTemplate = `Please verify your recent login attempts here: ${trackingLink}`;
-            let htmlTemplate = `<p>Please <a href="${trackingLink}">verify your recent login attempts here</a>.</p>`;
+    emails.forEach(email => {
+        db.run(
+            'INSERT INTO campaigns (name, template, target_email) VALUES (?, ?, ?)',
+            [name, template, email],
+            function (err) {
+                processedCount++;
+                
+                if (err) {
+                    console.error("Database error for email:", email, err.message);
+                } else {
+                    const campaignId = this.lastID;
+                    insertedCampaigns.push({ id: campaignId, name, template, target_email: email, status: 'sent' });
 
-            if (template === 'password_reset') {
-                 subject = 'URGENT: Password Reset Required';
-                 textTemplate = `Your password will expire in 24 hours. Reset it here immediately: ${trackingLink}`;
-                 htmlTemplate = `<h2>Action Required</h2><p>Your password will expire in 24 hours. <a href="${trackingLink}">Reset it here</a> immediately.</p>`;
-            } else if (template === 'gift_card') {
-                 subject = 'You have a new Amazon Gift Card!';
-                 textTemplate = `A colleague sent you a $50 gift card! Claim it here: ${trackingLink}`;
-                 htmlTemplate = `<h2>Gift Card Reward</h2><p>A colleague sent you a $50 gift card! <a href="${trackingLink}">Claim it here</a>.</p>`;
-            }
+                    // Phase 2: Link points to the Frontend Fake Login Portal instead of the backend directly
+                    // Assuming default Vite port is 5173
+                    const portalLink = `http://localhost:5173/portal/${campaignId}/${encodeURIComponent(email)}`;
 
-            const mailOptions = {
-                from: '"IT Dept" <it-alerts@simulator.local>',
-                to: target_email,
-                subject: subject,
-                text: textTemplate,
-                html: htmlTemplate
-            };
+                    // Send Email Simulation
+                    let subject = 'Important Account Update';
+                    let textTemplate = `Please verify your recent login attempts here: ${portalLink}`;
+                    let htmlTemplate = `<p>Please <a href="${portalLink}">verify your recent login attempts here</a>.</p>`;
 
-            if(transporter) {
-                 transporter.sendMail(mailOptions, (error, info) => {
-                    if (error) {
-                        console.error('Error sending mail:', error);
-                    } else {
-                        console.log('Message sent: %s', info.messageId);
-                        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+                    if (template === 'password_reset') {
+                         subject = 'URGENT: Password Reset Required';
+                         textTemplate = `Your password will expire in 24 hours. Reset it here immediately: ${portalLink}`;
+                         htmlTemplate = `<h2>Action Required</h2><p>Your password will expire in 24 hours. <a href="${portalLink}">Reset it here</a> immediately.</p>`;
+                    } else if (template === 'gift_card') {
+                         subject = 'You have a new Amazon Gift Card!';
+                         textTemplate = `A colleague sent you a $50 gift card! Claim it here: ${portalLink}`;
+                         htmlTemplate = `<h2>Gift Card Reward</h2><p>A colleague sent you a $50 gift card! <a href="${portalLink}">Claim it here</a>.</p>`;
                     }
-                 });
-            } else {
-                 console.log("Transporter not ready, email simulated locally.", mailOptions);
+
+                    const mailOptions = {
+                        from: '"IT Dept" <it-alerts@simulator.local>',
+                        to: email,
+                        subject: subject,
+                        text: textTemplate,
+                        html: htmlTemplate
+                    };
+
+                    if(transporter) {
+                         transporter.sendMail(mailOptions, (error, info) => {
+                            if (error) {
+                                console.error('Error sending mail:', error);
+                            } else {
+                                console.log('Message sent: %s', info.messageId);
+                                console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+                            }
+                         });
+                    }
+                }
+
+                // Send response once all emails are processed
+                if (processedCount === emails.length) {
+                    res.json({
+                        message: "success",
+                        data: insertedCampaigns // Array of all created rows
+                    });
+                }
             }
-
-
-            res.json({
-                message: "success",
-                data: { id: campaignId, name, template, target_email, status: 'sent' }
-            });
-        }
-    );
+        );
+    });
 });
 
-// The "Malicious" Click Endpoint
-app.get('/api/click/:campaignId/:email', (req, res) => {
-    const { campaignId, email } = req.params;
+// Phase 2: The "Malicious" Click Endpoint is now a POST hit by the React Portal
+app.post('/api/click', (req, res) => {
+    const { campaignId, email, password } = req.body; // Password intentionally ignored for safety
 
     // Log the click in the database
     db.run(
         'UPDATE campaigns SET clicked = 1, status = "clicked" WHERE id = ? AND target_email = ?',
-        [campaignId, decodeURIComponent(email)],
+        [campaignId, email],
         function(err) {
             if (err) {
                  console.error("Error updating click status:", err.message);
-                 return res.status(500).send("Internal Server Error");
+                 return res.status(500).json({ error: "Internal Server Error" });
             }
             
-            console.log(`User ${email} clicked on simulation campaign ${campaignId}`);
+            console.log(`User ${email} submitted credentials on fake portal for campaign ${campaignId}!`);
 
-            // Redirect to the frontend React "Learning Page"
-            // Assuming default Vite port is 5173
-            res.redirect('http://localhost:5173/learning');
+            res.json({ message: "Phish logged successfully." });
         }
     );
 });
