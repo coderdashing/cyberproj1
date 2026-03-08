@@ -14,7 +14,7 @@ const Dashboard = () => {
   // Fetch campaigns from backend
   const fetchCampaigns = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/campaigns');
+      const res = await fetch('https://cyberproj1.onrender.com/api/campaigns');
       const data = await res.json();
       if (data.message === 'success') {
         setCampaigns(data.data);
@@ -39,7 +39,7 @@ const Dashboard = () => {
     
     setSending(true);
     try {
-      const res = await fetch('http://localhost:3000/api/campaigns', {
+      const res = await fetch('https://cyberproj1.onrender.com/api/campaigns', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ const Dashboard = () => {
   const handleClearHistory = async () => {
     if (confirm("Are you sure you want to delete all campaign history? This cannot be undone.")) {
       try {
-        const res = await fetch('http://localhost:3000/api/campaigns', {
+        const res = await fetch('https://cyberproj1.onrender.com/api/campaigns', {
           method: 'DELETE'
         });
         if (res.ok) {
