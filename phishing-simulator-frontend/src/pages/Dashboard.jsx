@@ -8,13 +8,14 @@ const Dashboard = () => {
   // Form State
   const [name, setName] = useState('');
   const [targetEmail, setTargetEmail] = useState('');
-  const [template, setTemplate] = useState('password_reset');
+  const [prompt, setPrompt] = useState('');
   const [sending, setSending] = useState(false);
 
   // Fetch campaigns from backend
   const fetchCampaigns = async () => {
     try {
-      const res = await fetch('https://cyberproj1.onrender.com/api/campaigns');
+      const apiUrl = import.meta.env.DEV ? 'http://localhost:3000' : 'https://cyberproj1.onrender.com';
+      const res = await fetch(`${apiUrl}/api/campaigns`);
       const data = await res.json();
       if (data.message === 'success') {
         setCampaigns(data.data);
@@ -39,12 +40,13 @@ const Dashboard = () => {
     
     setSending(true);
     try {
-      const res = await fetch('https://cyberproj1.onrender.com/api/campaigns', {
+      const apiUrl = import.meta.env.DEV ? 'http://localhost:3000' : 'https://cyberproj1.onrender.com';
+      const res = await fetch(`${apiUrl}/api/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, target_email: targetEmail, template }),
+        body: JSON.stringify({ name, target_email: targetEmail, prompt }),
       });
       
       if (res.ok) {
@@ -62,7 +64,8 @@ const Dashboard = () => {
   const handleClearHistory = async () => {
     if (confirm("Are you sure you want to delete all campaign history? This cannot be undone.")) {
       try {
-        const res = await fetch('https://cyberproj1.onrender.com/api/campaigns', {
+        const apiUrl = import.meta.env.DEV ? 'http://localhost:3000' : 'https://cyberproj1.onrender.com';
+        const res = await fetch(`${apiUrl}/api/campaigns`, {
           method: 'DELETE'
         });
         if (res.ok) {
@@ -162,8 +165,8 @@ const Dashboard = () => {
                 className="form-input"
                 style={{ minHeight: '80px', resize: 'vertical' }}
                 placeholder="e.g. Write an exact replica of an urgent IT Password Expiry warning."
-                value={template}
-                onChange={(e) => setTemplate(e.target.value)}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
                 required
               />
               <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>

@@ -20,7 +20,8 @@ const PhishingPortal = () => {
     try {
       // Send a POST request to our malicious click endpoint to register the "Phish".
       // Note: We intentionally DO NOT send the real password they typed. We only send the email and campaign ID.
-      await fetch('https://cyberproj1.onrender.com/api/click', {
+      const apiUrl = import.meta.env.DEV ? 'http://localhost:3000' : 'https://cyberproj1.onrender.com';
+      await fetch(`${apiUrl}/api/click`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
