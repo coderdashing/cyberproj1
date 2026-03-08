@@ -17,7 +17,22 @@ If you want to run the application entirely on your local machine, follow these 
 
 You need Node.js installed on your computer. You also need a Gemini API Key and a Gmail account with an App Password.
 
-### 1. Setup Environment Variables
+### 1. Acquire API Keys
+
+**Gemini API Key:**
+1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
+2. Sign in with a Google account and click **Create API Key**.
+3. Copy the generated key.
+
+**Gmail App Password:**
+Since regular Gmail passwords cannot be used for SMTP authentication:
+1. Go to your [Google Account Security Settings](https://myaccount.google.com/security).
+2. Ensure **2-Step Verification** is turned ON.
+3. Search for **App Passwords** in the security search bar (or browse under 2-Step Verification).
+4. Create a new App Password named "Phishing Simulator".
+5. Copy the 16-character generated password.
+
+### 2. Setup Environment Variables
 
 In the `phishing-simulator-backend` folder, create a `.env` file with the following keys:
 ```
