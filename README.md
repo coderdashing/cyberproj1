@@ -1,84 +1,61 @@
-# Phishing Simulator for Small Businesses
+# Phishing Simulator
 
-A lightweight, full-stack educational tool designed to help small businesses test employee phishing awareness without the risk of actual credential theft. 
+A web application that uses Google's Gemini AI to generate and send simulated phishing emails to evaluate and track user awareness.
 
-This project simulates a real-world phishing campaign by sending mock emails. If an employee clicks the link, they are taken to a realistic Fake Login Portal. Submitting any credentials instantly registers a "Phish" on the Admin Dashboard and redirects the employee to an immersive Learning Page.
+## Live Deployment
 
-## Features
-- **Admin Dashboard**: View campaign metrics in real-time (Total Sent, Total Clicked, Vulnerability Rate).
-- **Mass Email Support**: Send simulated tests to dozens of comma-separated employees at once.
-- **Ethereal Email Safety Net**: All emails are intercepted locally during development. You can test mass campaigns without accidentally spamming real inboxes.
-- **Credential Harvesting Portal**: A highly realistic Fake Microsoft Sign-In page that captures the *attempt* without ever saving the actual password.
-- **Educational Flow**: Employees caught by the simulation are instantly redirected to a helpful, non-punishing Learning Page.
+The frontend of this application is deployed on Vercel:
+[https://phishing-simulator-frontend.vercel.app](https://phishing-simulator-frontend.vercel.app)
 
----
-
-## Tech Stack
-**Frontend:** React, Vite, Vanilla CSS (Deep Dark Theme)
-**Backend:** Node.js, Express, SQLite3
-**Emailing:** Nodemailer (with Ethereal Email intercepts)
-
----
+The backend API running the Gemini AI and email sender is deployed on Render.
 
 ## How to Run Locally
 
-Because this is a full-stack project, you will need to run both the Frontend and the Backend servers simultaneously.
+If you want to run the application entirely on your local machine, follow these steps:
 
-### 1. Prerequisites
-Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
+### Prerequisites
 
-### 2. Start the Backend API
-The backend handles the SQLite database and the Ethereal mock email sending.
+You need Node.js installed on your computer. You also need a Gemini API Key and a Gmail account with an App Password.
 
-1. Open a terminal.
-2. Navigate to the backend folder:
-   ```bash
-   cd phishing-simulator-backend
-   ```
-3. Install the dependencies (only needed the first time):
-   ```bash
-   npm install
-   ```
-4. Start the server:
-   ```bash
-   node server.js
-   ```
-*You should see a message confirming the server is running on port 3000 and the database is connected.*
+### 1. Setup Environment Variables
 
-### 3. Start the Frontend Website
-Leave the backend terminal running! Open a **second, new terminal window**.
+In the `phishing-simulator-backend` folder, create a `.env` file with the following keys:
+```
+GEMINI_API_KEY=your_gemini_api_key_here
+SMTP_USER=your_gmail_email_address
+SMTP_PASS=your_gmail_app_password
+```
 
-1. Navigate to the frontend folder:
-   ```bash
-   cd phishing-simulator-frontend
-   ```
-2. Install the dependencies (only needed the first time):
-   ```bash
-   npm install
-   ```
-3. Start the Vite development server:
-   ```bash
-   npm run dev
-   ```
-*You should see a message with a Local link (e.g., `http://localhost:5173/`).*
+### 2. Start the Backend Server
 
----
+Open a terminal, navigate to the backend folder, install dependencies, and start the server:
+```bash
+cd phishing-simulator-backend
+npm install
+node server.js
+```
+The backend server will start running on Port `5001`. The SQLite database will automatically be initialized.
 
-## How to Use the Simulator
+### 3. Start the Frontend Application
 
-1. **Open the Dashboard**: Open your web browser and go to `http://localhost:5173/`
-2. **Launch a Campaign**: Under "New Simulation," type any email address (or a comma-separated list of emails). Click **Send Simulation Email**.
-3. **View the Fake Email**: Because we are using the Ethereal safety net, the email won't go to a real inbox. Instead, look at the terminal where your **Backend** (`node server.js`) is running. It will print a `Preview URL`.
-4. **Ctrl + Click** that Preview URL to view the mock email in your browser.
-5. **Take the Bait**: Click the malicious link inside the fake email. You will land on the Fake Login Portal.
-6. **Submit Credentials**: Type any fake password and hit "Sign In". 
-7. You will be redirected to the Learning Page. If you go back to your Dashboard, you will see the Vulnerability Rate jump up as the test registers a "Click"!
+Open a second terminal, navigate to the frontend folder, install dependencies, and run the Vite development server:
+```bash
+cd phishing-simulator-frontend
+npm install
+npm run dev
+```
 
----
+### 4. Access the Application
 
-## Moving to Production (Real Emails)
-If you wish to deploy this for real-world usage beyond local Hackathon testing:
-1. Open `phishing-simulator-backend/config/mailer.js`.
-2. Replace the Ethereal mock logic with actual SMTP credentials (e.g., Gmail App Passwords, SendGrid, or AWS SES).
-3. Update `portalLink` in `controllers/campaignController.js` from `localhost` to your production domain name.
-4. Host the built React frontend on Vercel/Netlify, and host the Node backend on Render/AWS.
+Open your browser and navigate to:
+[http://localhost:5173/](http://localhost:5173/)
+
+The application will automatically detect that you are running it locally and route all API requests to your local `localhost:5001` backend instead of the Render production server. Any emails sent will be processed via your local machine and stored in your local SQLite database.
+
+## Architecture
+
+*   **Frontend**: React, built with Vite, utilizing React Router and Tailwind CSS for styling.
+*   **Backend**: Node.js and Express.
+*   **Database**: SQLite (local `.sqlite` file).
+*   **AI Integration**: `@google/genai` (Gemini API).
+*   **Email Engine**: Nodemailer (via SMTP).
