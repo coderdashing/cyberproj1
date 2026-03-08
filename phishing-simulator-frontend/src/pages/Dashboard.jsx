@@ -155,15 +155,20 @@ const Dashboard = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Email Template</label>
-              <select 
-                className="form-select"
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Activity size={16} className="text-accent" /> AI Phishing Prompt
+              </label>
+              <textarea 
+                className="form-input"
+                style={{ minHeight: '80px', resize: 'vertical' }}
+                placeholder="e.g. Write an exact replica of an urgent IT Password Expiry warning."
                 value={template}
                 onChange={(e) => setTemplate(e.target.value)}
-              >
-                <option value="password_reset">Urgent: Password Reset</option>
-                <option value="gift_card">Reward: $50 Amazon Gift Card</option>
-              </select>
+                required
+              />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px', display: 'block' }}>
+                Describe exactly how you want the phishing email to look and sound. Gemini AI will generate it automatically!
+              </small>
             </div>
 
             <button 

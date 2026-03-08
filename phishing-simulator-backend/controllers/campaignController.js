@@ -1,5 +1,9 @@
 const db = require('../config/db');
 const { getTransporter, nodemailer } = require('../config/mailer');
+const { GoogleGenAI } = require('@google/genai');
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 
 const getAllCampaigns = (req, res) => {
     db.all("SELECT * FROM campaigns ORDER BY created_at DESC", [], (err, rows) => {
@@ -14,9 +18,9 @@ const getAllCampaigns = (req, res) => {
     });
 };
 
-const createCampaigns = (req, res) => {
-    const { name, template, target_email } = req.body;
-    if (!name || !template || !target_email) {
+const createCampaigns = async (req, res) => {
+    const { name, prompt, target_email } = req.body;
+    if (!name || !prompt || !target_email) {
         return res.status(400).json({ error: "Missing required fields." });
     }
 
@@ -31,64 +35,82 @@ const createCampaigns = (req, res) => {
     let processedCount = 0;
     const transporter = getTransporter();
 
-    emails.forEach(email => {
-        db.run(
-            'INSERT INTO campaigns (name, template, target_email) VALUES (?, ?, ?)',
-            [name, template, email],
-            function (err) {
-                processedCount++;
-                
-                if (err) {
-                    console.error("Database error for email:", email, err.message);
-                } else {
-                    const campaignId = this.lastID;
-                    insertedCampaigns.push({ id: campaignId, name, template, target_email: email, status: 'sent' });
+    try {
+        // Step 1: Use Gemini to generate a highly convincing Phishing Email based on user's custom prompt
+        const aiResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: "You are simulating a phishing email for an educational security test.\n" +
+            "Write a highly convincing corporate email based on this exact prompt: \"" + prompt + "\".\n" +
+            "You MUST include this exact placeholder string somewhere in the email where the user should click a link or button: \"{PORTAL_LINK}\".\n" +
+            "Make the tone urgent or enticing, just like a real phishing email.\n" +
+            "Format the output as a JSON object with two keys exactly: \"subject\" and \"htmlBody\".\n" +
+            "The \"htmlBody\" should be beautifully formatted HTML with inline CSS. Do not use markdown syntax in your response, just return the raw JSON."
+        });
 
-                    const portalLink = `http://localhost:5173/portal/${campaignId}/${encodeURIComponent(email)}`;
+        // Strip markdown backticks if Gemini accidentally includes them
+        let jsonStr = aiResponse.text.trim();
+        if (jsonStr.startsWith('\`\`\`json')) {
+            jsonStr = jsonStr.replace(/^\`\`\`json/, '').replace(/\`\`\`$/, '').trim();
+        } else if (jsonStr.startsWith('\`\`\`')) {
+            jsonStr = jsonStr.replace(/^\`\`\`/, '').replace(/\`\`\`$/, '').trim();
+        }
 
-                    let subject = 'Important Account Update';
-                    let textTemplate = `Please verify your recent login attempts here: ${portalLink}`;
-                    let htmlTemplate = `<p>Please <a href="${portalLink}">verify your recent login attempts here</a>.</p>`;
+        const generatedContent = JSON.parse(jsonStr);
 
-                    if (template === 'password_reset') {
-                         subject = 'URGENT: Password Reset Required';
-                         textTemplate = `Your password will expire in 24 hours. Reset it here immediately: ${portalLink}`;
-                         htmlTemplate = `<h2>Action Required</h2><p>Your password will expire in 24 hours. <a href="${portalLink}">Reset it here</a> immediately.</p>`;
-                    } else if (template === 'gift_card') {
-                         subject = 'You have a new Amazon Gift Card!';
-                         textTemplate = `A colleague sent you a $50 gift card! Claim it here: ${portalLink}`;
-                         htmlTemplate = `<h2>Gift Card Reward</h2><p>A colleague sent you a $50 gift card! <a href="${portalLink}">Claim it here</a>.</p>`;
+        // Step 2: Loop through emails, swap out the placeholder with the real malicious link, and send
+        emails.forEach(email => {
+            db.run(
+                'INSERT INTO campaigns (name, template, target_email) VALUES (?, ?, ?)',
+                [name, 'Custom Gemini AI Prompt', email],
+                function (err) {
+                    processedCount++;
+                    
+                    if (err) {
+                        console.error("Database error for email:", email, err.message);
+                    } else {
+                        const campaignId = this.lastID;
+                        insertedCampaigns.push({ id: campaignId, name, template: 'Custom Gemini AI Prompt', target_email: email, status: 'sent' });
+
+                        const portalLink = `http://localhost:5173/portal/${campaignId}/${encodeURIComponent(email)}`;
+                        
+                        // Inject the unique portal link into the AI generated HTML
+                        const finalHtml = generatedContent.htmlBody.replace('{PORTAL_LINK}', portalLink);
+
+                        const mailOptions = {
+                            from: '"Security Team Simulator" <alerts@local-simulator.com>',
+                            to: email,
+                            subject: generatedContent.subject,
+                            text: "Please view this email in an HTML compatible client.",
+                            html: finalHtml
+                        };
+
+                        if(transporter) {
+                             transporter.sendMail(mailOptions, (error, info) => {
+                                if (error) {
+                                    console.error('Error sending mail:', error);
+                                } else {
+                                    console.log('Message sent: %s', info?.messageId || 'Real SMTP Email');
+                                    if (info && info.messageId && info.messageId.includes('ethereal')) {
+                                        console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
+                                    }
+                                }
+                             });
+                        }
                     }
 
-                    const mailOptions = {
-                        from: '"IT Dept" <it-alerts@simulator.local>',
-                        to: email,
-                        subject: subject,
-                        text: textTemplate,
-                        html: htmlTemplate
-                    };
-
-                    if(transporter) {
-                         transporter.sendMail(mailOptions, (error, info) => {
-                            if (error) {
-                                console.error('Error sending mail:', error);
-                            } else {
-                                console.log('Message sent: %s', info.messageId);
-                                console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
-                            }
-                         });
+                    if (processedCount === emails.length) {
+                        res.json({
+                            message: "success",
+                            data: insertedCampaigns
+                        });
                     }
                 }
-
-                if (processedCount === emails.length) {
-                    res.json({
-                        message: "success",
-                        data: insertedCampaigns
-                    });
-                }
-            }
-        );
-    });
+            );
+        });
+    } catch (aiError) {
+        console.error("Gemini AI Error:", aiError);
+        return res.status(500).json({ error: "Failed to generate AI email." });
+    }
 };
 
 const registerClick = (req, res) => {
